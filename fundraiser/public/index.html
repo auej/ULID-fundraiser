@@ -179,9 +179,48 @@
     background: var(--surface2); border: 1.5px solid var(--border); border-radius: 12px;
     padding: 11px 6px; font-size: 14px; font-weight: 500; color: var(--text-secondary);
     cursor: pointer; transition: all 0.18s ease; font-family: inherit;
+    transform: translateY(0) scale(1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
-  .preset-btn:hover { background: #eef4ff; border-color: rgba(33,150,243,0.35); color: var(--blue-mid); }
-  .preset-btn.active { background: linear-gradient(135deg,#eef4ff,#e3f0ff); border-color: var(--blue-mid); color: var(--blue-mid); }
+  .preset-btn:hover { background: #eef4ff; border-color: rgba(33,150,243,0.35); color: var(--blue-mid); transform: translateY(-1px); box-shadow: 0 4px 10px rgba(33,150,243,0.12); }
+  .preset-btn.active {
+    background: linear-gradient(135deg,#eef4ff,#e3f0ff);
+    border-color: var(--blue-mid);
+    color: var(--blue-mid);
+    transform: translateY(-4px) scale(1.04);
+    box-shadow:
+      0 8px 20px rgba(33,150,243,0.22),
+      0 3px 8px rgba(33,150,243,0.15),
+      0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+  .preset-btn.active[data-amt="10"] {
+    box-shadow:
+      0 6px 14px rgba(33,150,243,0.18),
+      0 2px 6px rgba(33,150,243,0.1),
+      0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+  .preset-btn.active[data-amt="25"] {
+    box-shadow:
+      0 8px 18px rgba(33,150,243,0.25),
+      0 3px 8px rgba(33,150,243,0.18),
+      0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+  .preset-btn.active[data-amt="50"] {
+    box-shadow:
+      0 10px 24px rgba(33,150,243,0.35),
+      0 4px 12px rgba(33,150,243,0.25),
+      0 0 30px rgba(33,150,243,0.15),
+      0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+  .preset-btn.active[data-amt="100"] {
+    transform: translateY(-5px) scale(1.06);
+    box-shadow:
+      0 12px 32px rgba(33,150,243,0.5),
+      0 6px 16px rgba(33,150,243,0.35),
+      0 0 48px rgba(33,150,243,0.25),
+      0 0 80px rgba(79,172,254,0.15),
+      0 1px 0 rgba(255,255,255,0.9) inset;
+  }
 
   .custom-input-row { display: flex; gap: 10px; margin-bottom: 18px; }
   .input-wrap { flex: 1; position: relative; }
@@ -233,8 +272,49 @@
   .chart-panel.open {
     opacity: 1;
   }
+  /* ── Chart hover tooltip ── */
+  .chart-tooltip {
+    position: absolute;
+    background: rgba(29,29,31,0.88);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.6;
+    pointer-events: none;
+    white-space: nowrap;
+    opacity: 0;
+    transform: scale(0.88) translateY(4px);
+    transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.34,1.2,0.64,1);
+    z-index: 50;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .chart-tooltip.visible {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  .chart-tooltip .tt-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.55);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 2px;
+  }
+  .chart-tooltip .tt-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .chart-tooltip .tt-sub {
+    font-size: 11px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 1px;
+  }
   .chart-panel-inner {
     padding-top: 14px;
+    position: relative;
   }
   @keyframes chartFadeIn {
     0%   { opacity: 0; transform: translateY(18px); }
@@ -567,6 +647,11 @@
   <div class="chart-panel" id="chart-panel">
     <div class="chart-panel-inner">
       <canvas id="donation-chart" height="140"></canvas>
+      <div class="chart-tooltip" id="chart-tooltip">
+        <div class="tt-label">Current Progress</div>
+        <div class="tt-value" id="tt-value">$0</div>
+        <div class="tt-sub" id="tt-sub">of $600 goal</div>
+      </div>
       <div class="chart-legend">
         <div class="legend-item">
           <span class="legend-dot" style="background:#4facfe"></span><span>Raised</span>
@@ -637,6 +722,9 @@
   <div class="toast" id="toast">🎉 Thank you for your donation!</div>
 </div>
 
+
+
+
 <script>
 (function () {
   const GOAL = 600;
@@ -696,6 +784,22 @@
   const chartCanvas = document.getElementById('donation-chart');
   const chartCtx    = chartCanvas.getContext('2d');
 
+  let dashOffset = 0;
+  let dashAnimId = null;
+
+  function startDashAnim() {
+    if (dashAnimId) return;
+    function tick() {
+      dashOffset = (dashOffset + 0.08) % 9;
+      if (chartPanel.classList.contains('open')) drawChart();
+      dashAnimId = requestAnimationFrame(tick);
+    }
+    dashAnimId = requestAnimationFrame(tick);
+  }
+  function stopDashAnim() {
+    if (dashAnimId) { cancelAnimationFrame(dashAnimId); dashAnimId = null; }
+  }
+
   chartToggle.addEventListener('click', () => {
     const isOpen = chartPanel.classList.contains('open');
     if (!isOpen) {
@@ -711,6 +815,7 @@
         });
       });
       chartToggle.classList.add('active');
+      startDashAnim();
     } else {
       // Closing: lock to current height first, then animate to 0
       chartPanel.style.height = chartPanel.scrollHeight + 'px';
@@ -721,8 +826,15 @@
         });
       });
       chartToggle.classList.remove('active');
+      stopDashAnim();
     }
   });
+
+  // Redraw chart on donation
+  const chartTooltip = document.getElementById('chart-tooltip');
+  const ttValue      = document.getElementById('tt-value');
+  const ttSub        = document.getElementById('tt-sub');
+  let dotPos = { x: 0, y: 0 }; // updated by drawChart
 
   function drawChart() {
     const W = chartCanvas.offsetWidth;
@@ -745,6 +857,9 @@
     const px = x => pad.left + x * gW;
     const py = y => pad.top  + (1 - y) * gH;
 
+    // Store dot position for hover detection
+    dotPos = { x: px(splitPoint), y: py(raisedRatio) };
+
     // Grid lines + Y labels
     chartCtx.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
@@ -764,7 +879,7 @@
     // ── Projection area ───────────────────────────────────────────
     chartCtx.beginPath();
     chartCtx.moveTo(px(splitPoint), py(raisedRatio));
-    chartCtx.lineTo(px(1), py(1));
+    chartCtx.quadraticCurveTo(px((splitPoint + 1) / 2), py(raisedRatio * 0.75), px(1), py(1));
     chartCtx.lineTo(px(1), py(0));
     chartCtx.lineTo(px(splitPoint), py(0));
     chartCtx.closePath();
@@ -776,17 +891,19 @@
 
     chartCtx.beginPath();
     chartCtx.setLineDash([5, 4]);
+    chartCtx.lineDashOffset = -dashOffset;
     chartCtx.strokeStyle = 'rgba(33,150,243,0.4)';
     chartCtx.lineWidth = 1.5;
     chartCtx.moveTo(px(splitPoint), py(raisedRatio));
-    chartCtx.lineTo(px(1), py(1));
+    chartCtx.quadraticCurveTo(px((splitPoint + 1) / 2), py(raisedRatio * 0.75), px(1), py(1));
     chartCtx.stroke();
     chartCtx.setLineDash([]);
+    chartCtx.lineDashOffset = 0;
 
     // ── Raised area ───────────────────────────────────────────────
     chartCtx.beginPath();
     chartCtx.moveTo(px(0), py(0));
-    chartCtx.lineTo(px(splitPoint), py(raisedRatio));
+    chartCtx.quadraticCurveTo(px(splitPoint * 0.5), py(raisedRatio * 0.82), px(splitPoint), py(raisedRatio));
     chartCtx.lineTo(px(splitPoint), py(0));
     chartCtx.closePath();
     const raisedGrad = chartCtx.createLinearGradient(0, py(raisedRatio), 0, py(0));
@@ -799,17 +916,10 @@
     chartCtx.strokeStyle = '#4facfe';
     chartCtx.lineWidth = 2;
     chartCtx.moveTo(px(0), py(0));
-    chartCtx.lineTo(px(splitPoint), py(raisedRatio));
+    chartCtx.quadraticCurveTo(px(splitPoint * 0.5), py(raisedRatio * 0.82), px(splitPoint), py(raisedRatio));
     chartCtx.stroke();
 
-    // Dot at current position
-    chartCtx.beginPath();
-    chartCtx.arc(px(splitPoint), py(raisedRatio), 5, 0, Math.PI * 2);
-    chartCtx.fillStyle = '#4facfe';
-    chartCtx.fill();
-    chartCtx.strokeStyle = '#fff';
-    chartCtx.lineWidth = 2;
-    chartCtx.stroke();
+    drawDot(false);
 
     // X axis labels
     chartCtx.fillStyle = 'rgba(0,0,0,0.32)';
@@ -820,10 +930,65 @@
     chartCtx.fillText('Goal', px(1),   H - 10);
   }
 
-  // Redraw chart on donation
+  function drawDot(hovered) {
+    const r = hovered ? 8 : 5;
+    if (hovered) {
+      // Outer glow ring
+      chartCtx.beginPath();
+      chartCtx.arc(dotPos.x, dotPos.y, 13, 0, Math.PI * 2);
+      chartCtx.fillStyle = 'rgba(79,172,254,0.15)';
+      chartCtx.fill();
+    }
+    chartCtx.beginPath();
+    chartCtx.arc(dotPos.x, dotPos.y, r, 0, Math.PI * 2);
+    chartCtx.fillStyle = '#4facfe';
+    chartCtx.fill();
+    chartCtx.strokeStyle = '#fff';
+    chartCtx.lineWidth = 2;
+    chartCtx.stroke();
+  }
 
+  // ── Hover detection ───────────────────────────────────────────────
+  chartCanvas.addEventListener('mousemove', (e) => {
+    const rect   = chartCanvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const dist   = Math.sqrt((mouseX - dotPos.x) ** 2 + (mouseY - dotPos.y) ** 2);
+    const near   = dist < 18;
 
-  // ── Create & size the canvas — covers the full card ──────────────
+    chartCanvas.style.cursor = near ? 'pointer' : 'default';
+
+    if (near) {
+      // Redraw with zoomed dot
+      drawChart();
+      // Erase normal dot area and redraw zoomed
+      chartCtx.clearRect(dotPos.x - 15, dotPos.y - 15, 30, 30);
+      drawDot(true);
+
+      // Position tooltip above the dot
+      const pct   = Math.round(Math.min(raised / GOAL, 1) * 100);
+      const remaining = Math.max(GOAL - raised, 0);
+      ttValue.textContent = '$' + Math.round(raised);
+      ttSub.textContent   = remaining > 0
+        ? `$${Math.round(remaining)} left to goal`
+        : 'Goal reached! 🎉';
+
+      const tooltipX = dotPos.x - chartTooltip.offsetWidth / 2;
+      const tooltipY = dotPos.y - chartTooltip.offsetHeight - 14;
+      chartTooltip.style.left = Math.max(0, tooltipX) + 'px';
+      chartTooltip.style.top  = tooltipY + 'px';
+      chartTooltip.classList.add('visible');
+    } else {
+      chartTooltip.classList.remove('visible');
+      drawChart();
+    }
+  });
+
+  chartCanvas.addEventListener('mouseleave', () => {
+    chartTooltip.classList.remove('visible');
+    chartCanvas.style.cursor = 'default';
+    drawChart();
+  });
   const cardEl = document.querySelector('.card');
   const canvas = document.createElement('canvas');
   canvas.id = 'confetti-canvas';
@@ -1023,7 +1188,6 @@
     }
   });
 
-  // ── Counter ───────────────────────────────────────────────────────
   function animateCounter(from, to) {
     const dur = 900, t0 = performance.now();
     const exceeded = totalUncapped >= GOAL;
@@ -1277,12 +1441,14 @@
 
   // ── Helpers ───────────────────────────────────────────────────────
   function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+
   function easeOutBack(t) {
     const c = 1.70158 + 1;
     return 1 + c * Math.pow(t - 1, 3) + (c - 1) * Math.pow(t - 1, 2);
   }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 })();
+
 </script>
 </body>
 </html>

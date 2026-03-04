@@ -42,9 +42,9 @@ app.post('/create-payment-intent', async (req, res) => {
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
-      amount:   Math.round(amount * 100),
-      currency: 'usd',
-      automatic_payment_methods: { enabled: true },
+      amount:               Math.round(amount * 100),
+      currency:             'usd',
+      payment_method_types: ['card'],
       metadata: { fundraiser: 'UL Industrial Design Donation Fundraiser' },
     });
 

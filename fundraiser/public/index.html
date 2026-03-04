@@ -370,8 +370,28 @@
     margin-top: 8px; opacity: 0; transform: scale(0.9);
     transition: opacity 0.4s, transform 0.4s cubic-bezier(0.34,1.2,0.64,1);
   }
+  @keyframes fadeUp {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .card > * {
+    animation: fadeUp 0.5s ease both;
+  }
+  .card > *:nth-child(1) { animation-delay: 0.15s; }
+  .card > *:nth-child(2) { animation-delay: 0.22s; }
+  .card > *:nth-child(3) { animation-delay: 0.29s; }
+  .card > *:nth-child(4) { animation-delay: 0.36s; }
+  .card > *:nth-child(5) { animation-delay: 0.43s; }
+  .card > *:nth-child(6) { animation-delay: 0.50s; }
+  .card > *:nth-child(7) { animation-delay: 0.57s; }
+  .card > *:nth-child(8) { animation-delay: 0.62s; }
+  .card > *:nth-child(9) { animation-delay: 0.67s; }
+  .card > *:nth-child(10){ animation-delay: 0.71s; }
+    0%   { opacity: 0; transform: translateY(-32px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
   .card {
-    transition: box-shadow 0.5s ease;
+    animation: cardDrop 0.6s cubic-bezier(0.34, 1.2, 0.64, 1) both;
   }
   .card.glow-gold {
     box-shadow:
@@ -469,11 +489,6 @@
       <div class="progress-fill" id="progress-fill"></div>
     </div>
     <!-- canvas injected by JS -->
-  </div>
-
-  <div class="complete-badge" id="complete-badge">
-    <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    Goal Reached!
   </div>
 
   <div class="donors-row">

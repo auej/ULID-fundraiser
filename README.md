@@ -1,2 +1,0 @@
-# ULID-fundraiser
-fundraiser

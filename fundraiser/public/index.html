@@ -63,7 +63,7 @@
 
   h1 {
     font-size: 26px;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.4px;
     line-height: 1.25;
     margin-bottom: 6px;
@@ -450,7 +450,7 @@
     <span class="logo-label">University of Louisiana at Lafayette</span>
   </div>
 
-  <h1>UL Industrial Design<br>Donation Fundraiser!</h1>
+  <h1>ULID's Fundraiser!</h1>
   <p class="subtitle">Help support our students and program initiatives.<br>Every contribution makes a difference.</p>
 
   <div class="stats-row">
@@ -586,6 +586,7 @@
     }
   }
   loadStats();
+  setInterval(loadStats, 5000);
 
   // ── Create & size the canvas — covers the full card ──────────────
   const cardEl = document.querySelector('.card');

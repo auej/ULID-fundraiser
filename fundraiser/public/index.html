@@ -198,7 +198,78 @@
   input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
   input[type="number"]:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(33,150,243,0.12); background: #fff; }
 
-  /* ── Card slide panel ── */
+  /* ── Progress bar row with chart toggle ── */
+  .progress-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .progress-bar-row .progress-track {
+    flex: 1;
+  }
+  .chart-toggle {
+    flex-shrink: 0;
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-tertiary);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.18s ease;
+    padding: 0;
+  }
+  .chart-toggle svg { width: 13px; height: 13px; }
+  .chart-toggle:hover { background: #eef4ff; border-color: rgba(33,150,243,0.35); color: var(--blue-mid); }
+  .chart-toggle.active { background: #eef4ff; border-color: var(--blue-mid); color: var(--blue-mid); }
+
+  /* ── Chart dropdown panel ── */
+  .chart-panel {
+    overflow: hidden;
+    height: 0;
+    opacity: 0;
+    transition: height 0.38s cubic-bezier(0.4,0,0.2,1), opacity 0.28s ease;
+  }
+  .chart-panel.open {
+    opacity: 1;
+  }
+  .chart-panel-inner {
+    padding-top: 14px;
+  }
+  @keyframes chartFadeIn {
+    0%   { opacity: 0; transform: translateY(18px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .chart-panel.open .chart-panel-inner {
+    animation: chartFadeIn 0.55s cubic-bezier(0.34, 1.15, 0.64, 1) both;
+  }
+  #donation-chart {
+    width: 100%;
+    border-radius: 12px;
+    display: block;
+    background: var(--surface2);
+  }
+  .chart-legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .chart-legend .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 14px;
+  }
+  .legend-dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+  }
   .card-slide {
     overflow: hidden;
     max-height: 0;
@@ -465,12 +536,7 @@
 <body>
 <div class="card">
 
-  <div class="logo-area">
-    <div class="logo-dot"></div>
-    <span class="logo-label">University of Louisiana at Lafayette</span>
-  </div>
-
-  <h1>ULID's Fundraiser!</h1>
+  <h1><span style="color:#E34234;">ULID's</span> Fundraiser!</h1>
   <p class="subtitle">Help support our students and program initiatives.<br>Every contribution makes a difference.</p>
 
   <div class="stats-row">
@@ -485,10 +551,31 @@
   </div>
 
   <div class="progress-outer" id="progress-outer">
-    <div class="progress-track" id="progress-track">
-      <div class="progress-fill" id="progress-fill"></div>
+    <div class="progress-bar-row">
+      <div class="progress-track" id="progress-track">
+        <div class="progress-fill" id="progress-fill"></div>
+      </div>
+      <button class="chart-toggle" id="chart-toggle" title="Show chart">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </button>
     </div>
     <!-- canvas injected by JS -->
+  </div>
+
+  <div class="chart-panel" id="chart-panel">
+    <div class="chart-panel-inner">
+      <canvas id="donation-chart" height="140"></canvas>
+      <div class="chart-legend">
+        <div class="legend-item">
+          <span class="legend-dot" style="background:#4facfe"></span><span>Raised</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot" style="background:rgba(33,150,243,0.3)"></span><span>Projected to goal</span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="donors-row">
@@ -602,6 +689,139 @@
   }
   loadStats();
   setInterval(loadStats, 5000);
+
+  // ── Chart ─────────────────────────────────────────────────────────
+  const chartPanel  = document.getElementById('chart-panel');
+  const chartToggle = document.getElementById('chart-toggle');
+  const chartCanvas = document.getElementById('donation-chart');
+  const chartCtx    = chartCanvas.getContext('2d');
+
+  chartToggle.addEventListener('click', () => {
+    const isOpen = chartPanel.classList.contains('open');
+    if (!isOpen) {
+      // Opening: draw first, then measure and animate to exact height
+      chartPanel.style.height = 'auto';
+      drawChart();
+      const fullH = chartPanel.scrollHeight;
+      chartPanel.style.height = '0';
+      chartPanel.classList.add('open');
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          chartPanel.style.height = fullH + 'px';
+        });
+      });
+      chartToggle.classList.add('active');
+    } else {
+      // Closing: lock to current height first, then animate to 0
+      chartPanel.style.height = chartPanel.scrollHeight + 'px';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          chartPanel.style.height = '0';
+          chartPanel.classList.remove('open');
+        });
+      });
+      chartToggle.classList.remove('active');
+    }
+  });
+
+  function drawChart() {
+    const W = chartCanvas.offsetWidth;
+    const H = 140;
+    chartCanvas.width  = W * window.devicePixelRatio;
+    chartCanvas.height = H * window.devicePixelRatio;
+    chartCanvas.style.width  = W + 'px';
+    chartCanvas.style.height = H + 'px';
+    chartCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+    const pad = { top: 16, right: 20, bottom: 34, left: 46 };
+    const gW = W - pad.left - pad.right;
+    const gH = H - pad.top  - pad.bottom;
+
+    chartCtx.clearRect(0, 0, W, H);
+
+    const raisedRatio = Math.min(raised / GOAL, 1);
+    const splitPoint  = raisedRatio;
+
+    const px = x => pad.left + x * gW;
+    const py = y => pad.top  + (1 - y) * gH;
+
+    // Grid lines + Y labels
+    chartCtx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+      const y = py(i / 4);
+      chartCtx.strokeStyle = 'rgba(0,0,0,0.06)';
+      chartCtx.beginPath();
+      chartCtx.moveTo(pad.left, y);
+      chartCtx.lineTo(pad.left + gW, y);
+      chartCtx.stroke();
+
+      chartCtx.fillStyle = 'rgba(0,0,0,0.32)';
+      chartCtx.font = `500 11px -apple-system, sans-serif`;
+      chartCtx.textAlign = 'right';
+      chartCtx.fillText('$' + Math.round((i / 4) * GOAL), pad.left - 8, y + 4);
+    }
+
+    // ── Projection area ───────────────────────────────────────────
+    chartCtx.beginPath();
+    chartCtx.moveTo(px(splitPoint), py(raisedRatio));
+    chartCtx.lineTo(px(1), py(1));
+    chartCtx.lineTo(px(1), py(0));
+    chartCtx.lineTo(px(splitPoint), py(0));
+    chartCtx.closePath();
+    const projGrad = chartCtx.createLinearGradient(0, py(1), 0, py(0));
+    projGrad.addColorStop(0, 'rgba(33,150,243,0.0)');
+    projGrad.addColorStop(1, 'rgba(33,150,243,0.12)');
+    chartCtx.fillStyle = projGrad;
+    chartCtx.fill();
+
+    chartCtx.beginPath();
+    chartCtx.setLineDash([5, 4]);
+    chartCtx.strokeStyle = 'rgba(33,150,243,0.4)';
+    chartCtx.lineWidth = 1.5;
+    chartCtx.moveTo(px(splitPoint), py(raisedRatio));
+    chartCtx.lineTo(px(1), py(1));
+    chartCtx.stroke();
+    chartCtx.setLineDash([]);
+
+    // ── Raised area ───────────────────────────────────────────────
+    chartCtx.beginPath();
+    chartCtx.moveTo(px(0), py(0));
+    chartCtx.lineTo(px(splitPoint), py(raisedRatio));
+    chartCtx.lineTo(px(splitPoint), py(0));
+    chartCtx.closePath();
+    const raisedGrad = chartCtx.createLinearGradient(0, py(raisedRatio), 0, py(0));
+    raisedGrad.addColorStop(0, 'rgba(79,172,254,0.0)');
+    raisedGrad.addColorStop(1, 'rgba(79,172,254,0.2)');
+    chartCtx.fillStyle = raisedGrad;
+    chartCtx.fill();
+
+    chartCtx.beginPath();
+    chartCtx.strokeStyle = '#4facfe';
+    chartCtx.lineWidth = 2;
+    chartCtx.moveTo(px(0), py(0));
+    chartCtx.lineTo(px(splitPoint), py(raisedRatio));
+    chartCtx.stroke();
+
+    // Dot at current position
+    chartCtx.beginPath();
+    chartCtx.arc(px(splitPoint), py(raisedRatio), 5, 0, Math.PI * 2);
+    chartCtx.fillStyle = '#4facfe';
+    chartCtx.fill();
+    chartCtx.strokeStyle = '#fff';
+    chartCtx.lineWidth = 2;
+    chartCtx.stroke();
+
+    // X axis labels
+    chartCtx.fillStyle = 'rgba(0,0,0,0.32)';
+    chartCtx.font = `500 11px -apple-system, sans-serif`;
+    chartCtx.textAlign = 'center';
+    chartCtx.fillText('$0',   px(0),   H - 10);
+    chartCtx.fillText('$300', px(0.5), H - 10);
+    chartCtx.fillText('Goal', px(1),   H - 10);
+  }
+
+  // Redraw chart on donation
+
 
   // ── Create & size the canvas — covers the full card ──────────────
   const cardEl = document.querySelector('.card');
@@ -784,6 +1004,7 @@
       showToast();
       triggerGlow();
       triggerCardGlow();
+      if (chartPanel.classList.contains('open')) drawChart();
 
       // Reset form
       cardSlide.classList.remove('open');

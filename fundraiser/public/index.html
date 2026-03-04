@@ -631,7 +631,7 @@
 
   // ── Init Stripe ───────────────────────────────────────────────────
   // IMPORTANT: replace with your real publishable key from .env
-  const stripe   = Stripe('pk_test_51T76NSCMEDjMNpoxDc5zuYtZFsR6OdC0Evwj54IIHjCDEkIQies9AUeOuVTawdpAh0UvLk4HIbiGBt33JTcvw875003EkkHYcg');
+  const stripe   = Stripe('pk_live_51T76NIFnedwbcHYCH3Q5tgQotkVKVgod6GDeYeRLchCADbgtHEyeSmom8OTSefjfDz1U4P03Azq7asZduBDRi4xc00ZNEy8iGu');
   const elements = stripe.elements();
 
   const cardElement = elements.create('card', {
